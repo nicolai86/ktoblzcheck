@@ -73,7 +73,7 @@ func (check *AccountNumberCheck) BankCount() uint {
 	return uint(C.AccountNumberCheck_bankCount(check.ptr))
 }
 
-// Record represents a bank as defined in ktoblzcheck
+// Record represents a bank as defined in ktoblzcheck. Name and Location is always in utf-8 encoding
 type Record struct {
 	BankID   string
 	Name     string
@@ -87,6 +87,14 @@ func (f UnknownRecord) Error() string {
 	return fmt.Sprintf("unknown BLZ: %v", string(f))
 }
 
+func toUtf8(iso8859Buf []byte) string {
+	buf := make([]rune, len(iso8859Buf))
+	for i, b := range iso8859Buf {
+		buf[i] = rune(b)
+	}
+	return string(buf)
+}
+
 // FindBank looks up a bank by its given bankId
 func (check *AccountNumberCheck) FindBank(bankID string) (Record, error) {
 	bank := C.AccountNumberCheck_findBank(check.ptr, C.CString(bankID))
@@ -94,10 +102,14 @@ func (check *AccountNumberCheck) FindBank(bankID string) (Record, error) {
 		return Record{}, UnknownRecord(bankID)
 	}
 	var record = Record{
-		BankID:   strconv.Itoa(int(C.AccountNumberCheck_Record_bankId(bank))),
-		Name:     C.GoString(C.AccountNumberCheck_Record_bankName(bank)),
-		Location: C.GoString(C.AccountNumberCheck_Record_location(bank)),
+		BankID: strconv.Itoa(int(C.AccountNumberCheck_Record_bankId(bank))),
 	}
-	// C.AccountNumberCheck_Record_delete(bank)
+	if StringEncoding() == "UTF-8" {
+		record.Name = C.GoString(C.AccountNumberCheck_Record_bankName(bank))
+		record.Location = C.GoString(C.AccountNumberCheck_Record_location(bank))
+	} else {
+		record.Name = toUtf8([]byte(C.GoString(C.AccountNumberCheck_Record_bankName(bank))))
+		record.Location = toUtf8([]byte(C.GoString(C.AccountNumberCheck_Record_location(bank))))
+	}
 	return record, nil
 }
