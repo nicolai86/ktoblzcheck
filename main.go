@@ -8,7 +8,6 @@ import "C"
 import (
 	"fmt"
 	"strconv"
-	"sync"
 )
 
 // LibraryVersion returns the value of ktoblzcheck's configuration variable VERSION as a string
@@ -101,40 +100,4 @@ func (check *AccountNumberCheck) FindBank(bankID string) (Record, error) {
 	}
 	// C.AccountNumberCheck_Record_delete(bank)
 	return record, nil
-}
-
-func main() {
-	fmt.Printf("%v\n%v\n%v\n", LibraryVersion(), BankDataDir(), StringEncoding())
-	group := sync.WaitGroup{}
-	group.Add(2)
-	go func() {
-		check := NewDefaultAccountNumberCheck()
-		fmt.Printf("%d\n", check.BankCount())
-		fmt.Printf("%d\n", check.Check("21090900", "2882788600"))
-		for i := 0; i < 10; i++ {
-			bank, _ := check.FindBank("21090900")
-			fmt.Printf("%v\n", bank)
-			if _, err := check.FindBank("2109090000"); err != nil {
-				fmt.Printf("%v\n", err.Error())
-			}
-		}
-		check.Free()
-		group.Done()
-	}()
-
-	go func() {
-		check := NewAccountNumberCheck(BankDataDir() + "/bankdata_20141208.txt")
-		fmt.Printf("%d\n", check.BankCount())
-		fmt.Printf("%d\n", check.Check("21090900", "2882788600"))
-		for i := 0; i < 10; i++ {
-			bank, _ := check.FindBank("21090900")
-			fmt.Printf("%v\n", bank)
-			if _, err := check.FindBank("2109090000"); err != nil {
-				fmt.Printf("%v\n", err.Error())
-			}
-		}
-		check.Free()
-		group.Done()
-	}()
-	group.Wait()
 }
